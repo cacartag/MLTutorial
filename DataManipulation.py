@@ -332,8 +332,57 @@ best_rf = optimize_random_forest(X_train, y_train)
 
 
 
+# 5.1 Comprehensive Model Evaluation
+def evaluate_model(model, X_train, y_train, X_val, y_val, X_test, y_test):
+    """Comprehensive model evaluation"""
 
+    # Predictions
+    train_pred = model.predict(X_train)
+    val_pred = model.predict(X_val)
+    test_pred = model.predict(X_test)
 
+    # Probabilities for ROC AUC
+    train_pred_proba = model.predict_proba(X_train)[:, 1]
+    val_pred_proba = model.predict_proba(X_val)[:, 1]
+    test_pred_proba = model.predict_proba(X_test)[:, 1]
+
+    print("=== MODEL EVALUATION ===")
+
+    # Accuracy scores
+    print(f"Training Accuracy: {(train_pred == y_train).mean():.4f}")
+    print(f"Validation Accuracy: {(val_pred == y_val).mean():.4f}")
+    print(f"Test Accuracy: {(test_pred == y_test).mean():.4f}")
+
+    # ROC AUC scores
+    print(f"Training ROC AUC: {roc_auc_score(y_train, train_pred_proba):.4f}")
+    print(f"Validation ROC AUC: {roc_auc_score(y_val, val_pred_proba):.4f}")
+    print(f"Test ROC AUC: {roc_auc_score(y_test, test_pred_proba):.4f}")
+
+    # Detailed classification report
+    print("\nTest Set Classification Report:")
+    print(classification_report(y_test, test_pred))
+
+    # Confusion matrix
+    print("\nConfusion Matrix (Test Set):")
+    cm = confusion_matrix(y_test, test_pred)
+    print(cm)
+
+    if hasattr(model, 'feature_importances_'):
+        feature_importance = pd.DataFrame({
+            'feature': X_train.columns,
+            'importance': model.feature_importances_
+        }).sort_values('importance', ascending=False)
+
+        print("\nTop 5 Most Important Features:")
+        print(feature_importance.head())
+
+        # Plot feature importance
+        plt.figure(figsize=(10, 6))
+        sns.barplot(data=feature_importance.head(10), x='importance', y='feature')
+        plt.title('Feature Importance')
+        plt.show()
+
+evaluate_model(best_rf, X_train, y_train, X_val, y_val, X_test, y_test)
 
 
 
