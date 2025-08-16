@@ -35,15 +35,15 @@ warnings.filterwarnings('ignore')
 import seaborn as sns
 # titanic = sns.load_dataset('titanic')
 
-titanic = pd.read_csv('Datasets/titanic/test.csv')
+titanic = pd.read_csv('Datasets/titanic/train.csv')
 titanic.columns = titanic.columns.str.lower()
 titanic['deck'] = titanic['cabin'].str[0] 
 
 
 #First look at our data
-print("Dataset shape:", titanic.shape)
-print("\nFirst 5 rows:")
-print(titanic.head())
+# print("Dataset shape:", titanic.shape)
+# print("\nFirst 5 rows:")
+# print(titanic.head())
 
 
 # print("Dataset info:")
@@ -159,8 +159,8 @@ def handle_missing_data(df):
 # print(titanic['deck'].dtype)
 # print(type(titanic['deck'].dtype))
 titanic_clean = handle_missing_data(titanic)
-print("Missing values after cleaning:")
-print(titanic_clean.isnull().sum())
+# print("Missing values after cleaning:")
+# print(titanic_clean.isnull().sum())
 
 
 
@@ -184,17 +184,151 @@ def create_new_features(df):
     df_featured['fare_per_person'] = df_featured['fare'] / df_featured['family_size']
 
     # Tite extraction from name
-    # df_featured['title'] = df_featured['name'].str.extract('([A-Za-z]+)\.', expand=False)
-    # df_featured['title'] = df_featured['title'].replace(['Lady', 'Countess', 'Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer', 'Dona'], 'Rare')
-    # df_featured['title'] = df_featured['title'].replace('Mlle', 'Miss')
-    # df_featured['title'] = df_featured['title'].replace('Ms', 'Miss')
-    # df_featured['title'] = df_featured['title'].replace('Mme', 'Mrs')
+    df_featured['title'] = df_featured['name'].str.extract('([A-Za-z]+)\.', expand=False)
+    df_featured['title'] = df_featured['title'].replace(['Lady', 'Countess', 'Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer', 'Dona'], 'Rare')
+    df_featured['title'] = df_featured['title'].replace('Mlle', 'Miss')
+    df_featured['title'] = df_featured['title'].replace('Ms', 'Miss')
+    df_featured['title'] = df_featured['title'].replace('Mme', 'Mrs')
 
     return df_featured
 
 titanic_featured = create_new_features(titanic_clean)
 
+# 3.3 Prepare Features for ML
+def prepare_features_for_ml(df):
+    """Prepare features for machine learning"""
 
+    # Select features for modeling
+    features_to_use = ['pclass', 'sex', 'fare', 'embarked', 'family_size', 'is_alone', 'title']
+
+    # Create feature matrix
+    X = df[features_to_use].copy()
+    y = df['survived']
+
+    # Encode categorical variables
+    label_encoders = {}
+    categorical_columns = ['sex', 'embarked', 'title']
+
+    for column in categorical_columns:
+        le = LabelEncoder()
+        X[column] = le.fit_transform(X[column])
+        label_encoders[column] = le
+
+    return X, y, label_encoders
+
+X, y, encoders = prepare_features_for_ml(titanic_featured)
+print("Final feature matrix shape:", X.shape)
+print("Features:", X.columns.tolist())
+
+
+
+################# Part 4 ################################
+
+# 4.1 Train-Validation-Test Split
+X_temp, X_test, y_temp, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+X_train, X_val, y_train, y_val = train_test_split(
+    X_temp, y_temp, test_size=0.25, random_state=42, 
+    stratify=y_temp
+)
+
+print("Training set:", X_train.shape)
+print("Validation set:", X_val.shape)
+print("Test set:", X_test.shape)
+
+
+
+# 4.2 Model Comparison
+def compare_models(X_train, y_train, X_val, y_val):
+    """Compare different ML algorithms"""
+
+    models = {
+        'Logistic Regression':
+        LogisticRegression(random_state=42),
+#         'Random Forest Tune 1': RandomForestClassifier(
+#     n_estimators=20,       # Fewer trees
+#     max_depth=5,           # Limit depth
+#     min_samples_split=20,  # Need more samples to split (534/20 ≈ 27 per split)
+#     min_samples_leaf=10,   # Need more samples in leaves
+#     max_features='sqrt'    # Use fewer features per tree
+# ),
+#         'Random Forest Tune 2': RandomForestClassifier(
+#     n_estimators=15,
+#     max_depth=4,
+#     min_samples_split=30,
+#     min_samples_leaf=15,
+#     random_state=42
+# ),
+
+    'Random Forest': RandomForestClassifier(random_state=42, n_estimators=100)
+    }
+
+    results = {}
+
+    for name, model in models.items():
+        # Train model
+        model.fit(X_train, y_train)
+
+        # Predictions
+        train_pred = model.predict(X_train)
+        val_pred = model.predict(X_val)
+
+        # Calculate metrics
+        train_accuracy = (train_pred == y_train).mean()
+        val_accuracy = (val_pred == y_val).mean()
+
+        # Cross-validation score
+        cv_scores = cross_val_score(model, X_train, y_train, cv=5)
+
+        results[name] = {
+            'train_accuracy': train_accuracy, 
+            'val_accuracy': val_accuracy, 
+            'cv_mean': cv_scores.mean(),
+            'cv_std': cv_scores.std(),
+            'model': model
+        }
+
+        print(f"\n{name}:")
+        print(f"    Training Accuracy: {train_accuracy:.4f}")
+        print(f"    Validation Accuracy: {val_accuracy:.4f}")
+        print(f"    CV Score: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
+
+    return results
+    
+model_results = compare_models(X_train, y_train, X_val, y_val)
+
+
+# 4.3 Hyperparameter Optimization
+def optimize_random_forest(X_train, y_train):
+    """Optimize Random Forest hyperparameters"""
+
+    # Define parameter grid
+    param_grid = {
+        'n_estimators': [50, 100, 200],
+        'max_depth': [3, 5, 10, None],
+        'min_samples_split': [2, 5 ,10],
+        'min_samples_leaf': [1, 2, 4]
+    }
+
+    # Grid search with cross-validation
+    rf = RandomForestClassifier(random_state=42)
+    grid_search = GridSearchCV(
+        rf, param_grid, cv=5, scoring='accuracy', n_jobs=-1
+    )
+
+    grid_search.fit(X_train, y_train)
+
+    print("Best parameters:", grid_search.best_params_)
+    print("Best CV score:", grid_search.best_score_)
+
+    return grid_search.best_estimator_
+
+best_rf = optimize_random_forest(X_train, y_train)
+
+
+################## Part 5 ########################
 
 
 
