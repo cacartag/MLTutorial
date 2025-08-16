@@ -33,14 +33,17 @@ warnings.filterwarnings('ignore')
 
 # Load Titanic dataset 
 import seaborn as sns
-titanic = sns.load_dataset('titanic')
+# titanic = sns.load_dataset('titanic')
 
+titanic = pd.read_csv('Datasets/titanic/test.csv')
+titanic.columns = titanic.columns.str.lower()
+titanic['deck'] = titanic['cabin'].str[0] 
 
 
 #First look at our data
-# print("Dataset shape:", titanic.shape)
-# print("\nFirst 5 rows:")
-# print(titanic.head())
+print("Dataset shape:", titanic.shape)
+print("\nFirst 5 rows:")
+print(titanic.head())
 
 
 # print("Dataset info:")
@@ -127,9 +130,11 @@ def assess_data_quality(df):
     return missing_table
 
 # Run data quality assessment
-quality_report = assess_data_quality(titanic)
+#quality_report = assess_data_quality(titanic)
 
-def hanlde_missing_data(df):
+
+# 3.1 Handle Missing Data
+def handle_missing_data(df):
     """Handle missing data with domain knowledge"""
     df_clean = df.copy()
 
@@ -143,13 +148,58 @@ def hanlde_missing_data(df):
     df_clean['embarked'].fillna(df_clean['embarked'].mode()[0], inplace=True)
 
     # Deck: Create 'Unknown' category
+    # df_clean['deck'] = df_clean['deck'].cat.add_categories(['Unknown'])
     df_clean['deck'].fillna('Unknown', inplace=True)
+
+    df_clean['cabin'].fillna('Unknown', inplace=True)
+
 
     return df_clean
 
-titanic_clean = hanlde_missing_data(titanic)
+# print(titanic['deck'].dtype)
+# print(type(titanic['deck'].dtype))
+titanic_clean = handle_missing_data(titanic)
 print("Missing values after cleaning:")
 print(titanic_clean.isnull().sum())
+
+
+
+# 3.2 Feature Engineering
+def create_new_features(df):
+    """Create new feaatures based on domain knowledge"""
+    df_featured = df.copy()
+
+    # Family size
+    df_featured['family_size'] = df_featured['sibsp'] + df_featured['parch'] + 1
+
+    # Is alone
+    df_featured['is_alone'] = (df_featured['family_size'] == 1).astype(int)
+
+    # Age groups
+    df_featured['age_group'] = pd.cut(df_featured['age'],
+                                      bins=[0, 12, 18, 60, 100],
+                                      labels=['Child', 'Teen', 'Adult', 'Senior'])
+
+    # Fare per person
+    df_featured['fare_per_person'] = df_featured['fare'] / df_featured['family_size']
+
+    # Tite extraction from name
+    # df_featured['title'] = df_featured['name'].str.extract('([A-Za-z]+)\.', expand=False)
+    # df_featured['title'] = df_featured['title'].replace(['Lady', 'Countess', 'Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer', 'Dona'], 'Rare')
+    # df_featured['title'] = df_featured['title'].replace('Mlle', 'Miss')
+    # df_featured['title'] = df_featured['title'].replace('Ms', 'Miss')
+    # df_featured['title'] = df_featured['title'].replace('Mme', 'Mrs')
+
+    return df_featured
+
+titanic_featured = create_new_features(titanic_clean)
+
+
+
+
+
+
+
 
 
 
