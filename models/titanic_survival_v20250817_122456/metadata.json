@@ -1,0 +1,35 @@
+{
+  "model_name": "titanic_survival",
+  "timestamp": "20250817_122456",
+  "feature_names": [
+    "pclass",
+    "sex",
+    "fare",
+    "embarked",
+    "family_size",
+    "is_alone",
+    "title"
+  ],
+  "model_type": "RandomForestClassifier",
+  "model_params": {
+    "bootstrap": true,
+    "ccp_alpha": 0.0,
+    "class_weight": null,
+    "criterion": "gini",
+    "max_depth": 10,
+    "max_features": "sqrt",
+    "max_leaf_nodes": null,
+    "max_samples": null,
+    "min_impurity_decrease": 0.0,
+    "min_samples_leaf": 2,
+    "min_samples_split": 10,
+    "min_weight_fraction_leaf": 0.0,
+    "monotonic_cst": null,
+    "n_estimators": 100,
+    "n_jobs": null,
+    "oob_score": false,
+    "random_state": 42,
+    "verbose": 0,
+    "warm_start": false
+  }
+}

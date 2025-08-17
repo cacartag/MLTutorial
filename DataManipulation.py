@@ -262,7 +262,7 @@ def compare_models(X_train, y_train, X_val, y_val):
 #     random_state=42
 # ),
 
-    'Random Forest': RandomForestClassifier(random_state=42, n_estimators=100)
+    'Random Forest': RandomForestClassifier(random_state=42, n_estimators=100, min_samples_leaf=2, min_samples_split=10, max_depth=10)
     }
 
     results = {}
@@ -297,35 +297,37 @@ def compare_models(X_train, y_train, X_val, y_val):
 
     return results
     
-model_results = compare_models(X_train, y_train, X_val, y_val)
+best_rf = compare_models(X_train, y_train, X_val, y_val)['Random Forest']['model']
+
+#compare_models(X_train, y_train, X_val, y_val)
 
 
 # 4.3 Hyperparameter Optimization
-def optimize_random_forest(X_train, y_train):
-    """Optimize Random Forest hyperparameters"""
+# def optimize_random_forest(X_train, y_train):
+#     """Optimize Random Forest hyperparameters"""
 
-    # Define parameter grid
-    param_grid = {
-        'n_estimators': [50, 100, 200],
-        'max_depth': [3, 5, 10, None],
-        'min_samples_split': [2, 5 ,10],
-        'min_samples_leaf': [1, 2, 4]
-    }
+#     # Define parameter grid
+#     param_grid = {
+#         'n_estimators': [50, 100, 200],
+#         'max_depth': [3, 5, 10, None],
+#         'min_samples_split': [2, 5 ,10],
+#         'min_samples_leaf': [1, 2, 4]
+#     }
 
-    # Grid search with cross-validation
-    rf = RandomForestClassifier(random_state=42)
-    grid_search = GridSearchCV(
-        rf, param_grid, cv=5, scoring='accuracy', n_jobs=-1
-    )
+#     # Grid search with cross-validation
+#     rf = RandomForestClassifier(random_state=42)
+#     grid_search = GridSearchCV(
+#         rf, param_grid, cv=5, scoring='accuracy', n_jobs=-1
+#     )
 
-    grid_search.fit(X_train, y_train)
+#     grid_search.fit(X_train, y_train)
 
-    print("Best parameters:", grid_search.best_params_)
-    print("Best CV score:", grid_search.best_score_)
+#     print("Best parameters:", grid_search.best_params_)
+#     print("Best CV score:", grid_search.best_score_)
 
-    return grid_search.best_estimator_
+#     return grid_search.best_estimator_
 
-best_rf = optimize_random_forest(X_train, y_train)
+# best_rf = optimize_random_forest(X_train, y_train)
 
 
 ################## Part 5 ########################
@@ -383,6 +385,74 @@ def evaluate_model(model, X_train, y_train, X_val, y_val, X_test, y_test):
         plt.show()
 
 evaluate_model(best_rf, X_train, y_train, X_val, y_val, X_test, y_test)
+
+
+# 5.2 Model Validation Strategies
+
+def advanced_validation(model, X, y):
+    """Advanced validation techniques"""
+
+    print("=== ADVANCED VALIDATION ===")
+
+    # Cross-validation with different strategies
+    from sklearn.model_selection import StratifiedKFold, RepeatedStratifiedKFold
+
+    # Standard stratified K-fold
+    skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)  
+    cv_scores = cross_val_score(model, X, y, cv=skf,
+                                scoring='accuracy')
+    print(f"Stratified 5-Fold CV: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
+
+    # Repeated stratified K-fold
+    rskf = RepeatedStratifiedKFold(n_splits=5, n_repeats=3, random_state=42)
+    repeated_cv_scores = cross_val_score(model, X, y, cv=rskf, scoring='accuracy')
+    print(f"Repeated Stratified CV: {repeated_cv_scores.mean():.4f} (+/- {repeated_cv_scores.std() * 2:.4f})")
+
+    return cv_scores, repeated_cv_scores
+
+cv_scores, repeated_cv_scores = advanced_validation(best_rf, X_train, y_train)
+
+
+################# Part 6 #####################
+
+# 6.1 Save Model and Preprocessing Components
+
+import os 
+from datetime import datetime
+import json
+
+def save_model_artifacts(model, encoders, feature_names, model_name="titanic_survival"):
+    """Save all model artifacts with versioning"""
+
+    # Create model directory with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    model_dir = f"models/{model_name}_v{timestamp}"
+    os.makedirs(model_dir, exist_ok=True)
+
+    # Save the trained model
+    joblib.dump(model, f"{model_dir}/model.pkl")
+
+    # Save encoders
+    joblib.dump(encoders, f"{model_dir}/encoders.pkl")
+
+    # Save metadata
+    metadata = {
+        "model_name": model_name,
+        "timestamp": timestamp,
+        "feature_names": feature_names,
+        "model_type": str(type(model).__name__),
+        "model_params": model.get_params()
+    }
+
+    with open(f"{model_dir}/metadata.json",'w') as f:
+        json.dump(metadata, f, indent=2)
+
+    print(f"Model artifacts saved to: {model_dir}")
+
+    return model_dir
+
+model_dir = save_model_artifacts(best_rf, encoders, X_train.columns.tolist())
+
 
 
 
