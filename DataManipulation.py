@@ -199,7 +199,7 @@ def prepare_features_for_ml(df):
     """Prepare features for machine learning"""
 
     # Select features for modeling
-    features_to_use = ['pclass', 'sex', 'fare', 'embarked', 'family_size', 'is_alone', 'title']
+    features_to_use = ['pclass', 'age', 'sex', 'fare', 'embarked', 'family_size', 'is_alone', 'title']
 
     # Create feature matrix
     X = df[features_to_use].copy()

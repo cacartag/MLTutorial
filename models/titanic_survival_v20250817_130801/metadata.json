@@ -1,8 +1,9 @@
 {
   "model_name": "titanic_survival",
-  "timestamp": "20250817_122456",
+  "timestamp": "20250817_130801",
   "feature_names": [
     "pclass",
+    "age",
     "sex",
     "fare",
     "embarked",
